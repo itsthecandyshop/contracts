@@ -1,0 +1,77 @@
+pragma solidity ^0.6.0;
+
+
+contract DSMath {
+    uint constant WAD = 10 ** 18;
+
+    function add(uint x, uint y) internal pure returns (uint z) {
+        require((z = x + y) >= x, "math-not-safe");
+    }
+
+    function mul(uint x, uint y) internal pure returns (uint z) {
+        require(y == 0 || (z = x * y) / y == x, "math-not-safe");
+    }
+
+    function sub(uint x, uint y) internal pure returns (uint z) {
+        require((z = x - y) <= x, "sub-overflow");
+    }
+
+    function wmul(uint x, uint y) internal pure returns (uint z) {
+        z = add(mul(x, y), WAD / 2) / WAD;
+    }
+
+    function wdiv(uint x, uint y) internal pure returns (uint z) {
+        z = add(mul(x, WAD), y / 2) / y;
+    }
+}
+
+contract Governance is DSMath {
+    address public admin;
+
+    uint public fee;
+    uint public candyPrice;
+    uint public lotteryDuration;
+
+    address public lendingProxy;
+    address public swapProxy;
+    uint public lendingId;
+
+    modifier isAdmin {
+        require(admin == msg.sender, "not-a-admin");
+        _;
+    }
+
+    function changeFee(uint _fee) external isAdmin {
+        require(_fee < 5 * 10 ** 15, "governance/over-fee"); // 0.5% Max Fee.
+        fee = _fee;
+    }
+
+    function changeCandyPrice(uint _price) external isAdmin {
+        require(_price < 1 * WAD, "governance/over-price"); // 1$ Max Price.
+        candyPrice = _price;
+    }
+
+    function changeDuration(uint _time) external isAdmin {
+        require(_time <= 30 days , "governance/over-price"); // 30 days Max duration
+        require(_time >= 7 days , "governance/over-price"); // 7 days min duration
+        lotteryDuration = _time;
+    }
+
+    function changelendingProxy(address _proxy) external isAdmin {
+        require(_proxy != address(0), "governance/no-deposit-proxy-address");
+        require(_proxy == lendingProxy, "governance/same-deposit-proxy-address");
+        lendingProxy = _proxy;
+    }
+
+    function changeSwapProxy(address _proxy) external isAdmin {
+        require(_proxy != address(0), "governance/no-swap-proxy-address");
+        require(_proxy == swapProxy, "governance/same-swap-proxy-address");
+        swapProxy = _proxy;
+    }
+
+    function changeAdmin(address _admin) external isAdmin {
+        require(_admin != address(0), "governance/no-admin-address");
+        require(admin != _admin, "governance/same-admin");
+        admin = _admin;
+    }
+}
