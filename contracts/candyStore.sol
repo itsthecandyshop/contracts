@@ -339,7 +339,7 @@ contract CandyStore is SwapResolver {
     //     uint buyAmt,
     //     uint slippage
     // ) external {
-    //     (address _feeToken, uint _buyAmt, uint feeAmt) = _swap(
+    //     (uint buyAmt, uint feeAmt) = _swap(
     //             swapId,
     //             buyToken,
     //             sellToken,
@@ -348,6 +348,6 @@ contract CandyStore is SwapResolver {
     //             buyAmt,
     //             slippage
     //         );
-    //     getCandy(feeAmt);
+    //     getCandy(feeToken, feeAmt);
     // }
 }
