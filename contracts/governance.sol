@@ -1,6 +1,5 @@
 pragma solidity ^0.6.0;
 
-
 contract DSMath {
     uint constant WAD = 10 ** 18;
 
@@ -52,8 +51,8 @@ contract Governance is DSMath {
     }
 
     function changeDuration(uint _time) external isAdmin {
-        require(_time <= 30 days , "governance/over-price"); // 30 days Max duration
-        require(_time >= 7 days , "governance/over-price"); // 7 days min duration
+        require(_time <= 30 days, "governance/over-price"); // 30 days Max duration
+        // require(_time >= 7 days, "governance/over-price"); // 7 days min duration
         lotteryDuration = _time;
     }
 
@@ -73,5 +72,25 @@ contract Governance is DSMath {
         require(_admin != address(0), "governance/no-admin-address");
         require(admin != _admin, "governance/same-admin");
         admin = _admin;
+    }
+
+    constructor (
+        uint _fee,
+        uint _candyPrice,
+        uint _duration,
+        address _lendingProxy,
+        address _swapProxy
+    ) public {
+        assert(_fee != 0);
+        assert(_candyPrice != 0);
+        assert(_duration != 0);
+        assert(_lendingProxy != address(0));
+        // assert(_swapProxy != address(0));
+        admin = 0xe866ecE4bbD0Ac75577225Ee2C464ef16DC8b1F3;
+        fee = _fee;
+        candyPrice = _candyPrice;
+        lotteryDuration = _duration;
+        lendingProxy = _lendingProxy;
+        swapProxy = _swapProxy;
     }
 }
