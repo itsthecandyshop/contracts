@@ -115,6 +115,7 @@ contract CompoundHelpers is Helpers {
      * @dev Return Compound Comptroller Address
      */
     function getComptrollerAddress() internal pure returns (address) {
+        // return 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
         return 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
     }
 
@@ -258,7 +259,7 @@ contract AaveResolver is AaveHelpers {
     }
 }
 
-contract Proxy is AaveResolver {
+contract LendingProxy is AaveResolver {
     string public name = "Compound-Aave";
 
     function deposit(uint lendingId, address token, uint256 amount) external payable returns (uint depositAmt) {
