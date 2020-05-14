@@ -154,8 +154,9 @@ contract Admin is LendingResolvers {
         LotteryData storage rewardLottery = lottery[rewardDrawId];
 
         require(rewardLottery.state == LotteryState.committed, "lottery-not-committed");
+        uint endTime = rewardLottery.startTime + rewardLottery.duration * 2;
         // solium-disable-next-line security/no-block-members
-        require(rewardLottery.duration * 2 <= now, "timer-not-over-yet");
+        require(endTime <= now, "timer-not-over-yet");
         require(rewardLottery.isDeposited, "tokens-not-deposited");
 
         uint random = 5; // random number b/w [0, lotteryUsers.length];
@@ -179,8 +180,10 @@ contract Admin is LendingResolvers {
     function _commit(uint commitDrawId, uint lendingId) internal {
         LotteryData storage commitLottery = lottery[commitDrawId];
         require(commitLottery.state == LotteryState.draw, "lottery-not-committed");
+
+        uint endTime = commitLottery.startTime + commitLottery.duration;
         // solium-disable-next-line security/no-block-members
-        require(commitLottery.duration <= now, "timer-not-over-yet");
+        require(endTime <= now, "timer-not-over-yet");
         require(!commitLottery.isDeposited, "tokens-deposited");
 
         for (uint i = 0; i < stableCoinsArr.length; i++) {
@@ -207,7 +210,7 @@ contract Admin is LendingResolvers {
         if (currentDraw != 0) {
             _commit(currentDraw, lendingId);
             if (currentDraw >= 2) {
-                require(lottery[currentDraw - 1].state == LotteryState.draw, "lottery-not-committed");
+                require(lottery[currentDraw - 1].state == LotteryState.rewarded, "lottery-not-committed");
             }
         }
 
@@ -225,7 +228,7 @@ contract Admin is LendingResolvers {
                 duration: governanceContract.lotteryDuration()
                 }
             );
-        require(lotteryUsers[openDraw].length == 0, "error-opening-next-draw");
+        require(lotteryUsers[nextDraw].length == 0, "error-opening-next-draw");
 
         openDraw++;
     }
@@ -279,8 +282,8 @@ contract SponsorResolver is CandyResolver {
 
         // TODO - swappedAmt => Stable coin amt after the swap if user deposits other than stable coins
         uint swappedAmt = amt;
-        require(swappedAmt == 0, "amt-is-not-vaild");
-        lottery[openDraw].tokenBalances[token].sponsorAmount = amt;
+        require(swappedAmt != 0, "amt-is-not-vaild");
+        lottery[openDraw].tokenBalances[token].sponsorAmount += amt;
     }
 
     // TODO - have to discuss about this.
