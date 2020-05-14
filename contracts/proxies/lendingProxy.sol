@@ -115,8 +115,8 @@ contract CompoundHelpers is Helpers {
      * @dev Return Compound Comptroller Address
      */
     function getComptrollerAddress() internal pure returns (address) {
-        // return 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
-        return 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B;
+        // return 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B; // mainnet
+        return 0x1f5D7F3CaAC149fE41b8bd62A3673FE6eC0AB73b; //kovan
     }
 
     /**
@@ -193,14 +193,16 @@ contract AaveHelpers is CompoundResolver {
      * @dev get Aave Address
     */
     function getAaveAddress() internal pure returns (address) {
-        return 0x398eC7346DcD622eDc5ae82352F02bE94C62d119;
+        // return 0x398eC7346DcD622eDc5ae82352F02bE94C62d119; //mainnet
+        return 0x580D4Fdc4BF8f9b5ae2fb9225D584fED4AD5375c;
     }
 
     /**
      * @dev get Aave Address
     */
     function getAaveProviderAddress() internal pure returns (address) {
-        return 0x398eC7346DcD622eDc5ae82352F02bE94C62d119;
+        // return 0x24a42fD28C976A61Df5D00D0599C34c4f90748c8; //mainnet
+        return 0x506B0B2CF20FAA8f38a4E2B524EE43e1f4458Cc5; //kovan
     }
 
     function getWithdrawBalance(address token) internal view returns (uint bal) {
