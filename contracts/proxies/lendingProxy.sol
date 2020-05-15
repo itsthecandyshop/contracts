@@ -1,96 +1,11 @@
 pragma solidity ^0.6.0;
 
-interface CTokenInterface {
-    function mint(uint mintAmount) external returns (uint);
-    function redeem(uint redeemTokens) external returns (uint);
-    function borrow(uint borrowAmount) external returns (uint);
-    function repayBorrow(uint repayAmount) external returns (uint);
-    function repayBorrowBehalf(address borrower, uint repayAmount) external returns (uint); // For ERC20
-    function liquidateBorrow(address borrower, uint repayAmount, address cTokenCollateral) external returns (uint);
+import {DSMath} from "../libraries/DSMath.sol";
 
-    function borrowBalanceCurrent(address account) external returns (uint);
-    function redeemUnderlying(uint redeemAmount) external returns (uint);
-    function exchangeRateCurrent() external returns (uint);
-
-    function balanceOf(address owner) external view returns (uint256 balance);
-}
-
-interface AaveContract {
-    function deposit(address _reserve, uint256 _amount, uint16 _referralCode) external payable;
-    function redeemUnderlying(
-        address _reserve,
-        address payable _user,
-        uint256 _amount,
-        uint256 _aTokenBalanceAfterRedeem
-    ) external;
-    function setUserUseReserveAsCollateral(address _reserve, bool _useAsCollateral) external;
-    function getUserReserveData(address _reserve, address _user) external view returns (
-            uint256 currentATokenBalance,
-            uint256 currentBorrowBalance,
-            uint256 principalBorrowBalance,
-            uint256 borrowRateMode,
-            uint256 borrowRate,
-            uint256 liquidityRate,
-            uint256 originationFee,
-            uint256 variableBorrowIndex,
-            uint256 lastUpdateTimestamp,
-            bool usageAsCollateralEnabled
-        );
-}
-
-
-interface CETHInterface {
-    function mint() external payable;
-    function repayBorrow() external payable;
-    function repayBorrowBehalf(address borrower) external payable;
-    function liquidateBorrow(address borrower, address cTokenCollateral) external payable;
-}
-
-interface TokenInterface {
-    function allowance(address, address) external view returns (uint);
-    function balanceOf(address) external view returns (uint);
-    function approve(address, uint) external;
-    function transfer(address, uint) external returns (bool);
-    function transferFrom(address, address, uint) external returns (bool);
-}
-
-interface ComptrollerInterface {
-    function enterMarkets(address[] calldata cTokens) external returns (uint[] memory);
-    function exitMarket(address cTokenAddress) external returns (uint);
-    function getAssetsIn(address account) external view returns (address[] memory);
-    function getAccountLiquidity(address account) external view returns (uint, uint, uint);
-}
-
-interface Mapping {
-    function cTokenMapping(address) external view returns (address);
-}
-
-contract DSMath {
-
-    function add(uint x, uint y) internal pure returns (uint z) {
-        require((z = x + y) >= x, "math-not-safe");
-    }
-
-    function mul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || (z = x * y) / y == x, "math-not-safe");
-    }
-
-    function sub(uint x, uint y) internal pure returns (uint z) {
-        require((z = x - y) <= x, "sub-overflow");
-    }
-
-    uint constant WAD = 10 ** 18;
-
-    function wmul(uint x, uint y) internal pure returns (uint z) {
-        z = add(mul(x, y), WAD / 2) / WAD;
-    }
-
-    function wdiv(uint x, uint y) internal pure returns (uint z) {
-        z = add(mul(x, WAD), y / 2) / y;
-    }
-
-}
-
+import {TokenInterface} from "../interfaces/token.sol";
+import {CTokenInterface, CETHInterface, ComptrollerInterface} from "../interfaces/compound.sol";
+import {AaveInterface} from "../interfaces/aave.sol";
+import {Mapping} from "../interfaces/mapping.sol";
 
 contract Helpers is DSMath {
     /**
@@ -99,7 +14,6 @@ contract Helpers is DSMath {
     function getAddressETH() internal pure returns (address) {
         return 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE; // ETH Address
     }
-
 
     /**
      * @dev Return Mapping Addresses
@@ -206,7 +120,7 @@ contract AaveHelpers is CompoundResolver {
     }
 
     function getWithdrawBalance(address token) internal view returns (uint bal) {
-        (bal, , , , , , , , , ) = AaveContract(getAaveProviderAddress()).getUserReserveData(token, msg.sender);
+        (bal, , , , , , , , , ) = AaveInterface(getAaveProviderAddress()).getUserReserveData(token, msg.sender);
     }
 }
 
@@ -219,7 +133,7 @@ contract AaveResolver is AaveHelpers {
      */
     function aaveDeposit(address token, uint amt) internal returns (uint _amt) {
         _amt = amt;
-        AaveContract aave = AaveContract(getAaveAddress());
+        AaveInterface aave = AaveInterface(getAaveAddress());
 
         uint ethAmt;
         if (token == getAddressETH()) {
@@ -240,7 +154,7 @@ contract AaveResolver is AaveHelpers {
     function aaveWithdraw(address token, uint amt) internal returns (uint _amt) {
         _amt = amt;
 
-        AaveContract aave = AaveContract(getAaveAddress());
+        AaveInterface aave = AaveInterface(getAaveAddress());
         uint totalBal = getWithdrawBalance(token);
 
         _amt = _amt == uint(-1) ? totalBal : _amt;

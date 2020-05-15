@@ -1,59 +1,13 @@
 pragma solidity ^0.6.0;
 
-interface GovernanceInterface {
-    function lendingProxy() external view returns (address);
-    function lotteryDuration() external view returns (uint);
-    function admin() external view returns (address);
-    function swapProxy() external view returns (address);
-    function candyPrice() external view returns (uint);
-    function fee() external view returns (uint);
-    function lendingId() external view returns (uint);
-}
+import {DSMath} from "./libraries/DSMath.sol";
 
-interface TokenInterface {
-    function approve(address, uint) external;
-    function transfer(address, uint) external;
-    function transferFrom(address, address, uint) external;
-    function deposit() external payable;
-    function withdraw(uint) external;
-    function balanceOf(address) external view returns (uint);
-}
+import {GovernanceInterface} from "./interfaces/governance.sol";
+import {TokenInterface} from "./interfaces/token.sol";
 
-
-contract DSMath {
-    uint constant WAD = 10 ** 18;
-
-    function add(uint x, uint y) internal pure returns (uint z) {
-        require((z = x + y) >= x, "math-not-safe");
-    }
-
-    function mul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || (z = x * y) / y == x, "math-not-safe");
-    }
-
-    function sub(uint x, uint y) internal pure returns (uint z) {
-        require((z = x - y) <= x, "sub-overflow");
-    }
-
-    function wmul(uint x, uint y) internal pure returns (uint z) {
-        z = add(mul(x, y), WAD / 2) / WAD;
-    }
-
-    function wdiv(uint x, uint y) internal pure returns (uint z) {
-        z = add(mul(x, WAD), y / 2) / y;
-    }
-
-    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
-        require(b != 0, "modulo-by-zero");
-        return a % b;
-    }
-}
-
-contract Helpers {
+contract CandyStoreData {
     GovernanceInterface public governanceContract;
-}
 
-contract CandyStoreData is Helpers {
     uint public openDraw;
 
     enum LotteryState {
@@ -62,7 +16,7 @@ contract CandyStoreData is Helpers {
         rewarded
     }
 
-    address[] stableCoinsArr;
+    address[] public stableCoinsArr;
     mapping (address => bool) public stableCoins;
 
     mapping (uint => LotteryData) public lottery;
@@ -100,6 +54,23 @@ contract CandyStoreData is Helpers {
     function getUsersLength(uint lotteryId) public view returns(uint) {
         require(openDraw >= lotteryId, "lotteryId-not-vaild");
         return lotteryUsers[lotteryId].length;
+    }
+
+    function getStableCoinsLength() public view returns(uint) {
+        return stableCoinsArr.length;
+    }
+
+    struct Assets {
+        address token;
+        uint amount;
+    }
+
+    function getAssetLocked(uint lotteryId, address token) public view returns(uint _amt, uint _lendingId) {
+        require(openDraw >= lotteryId, "lotteryId-not-vaild");
+        LotteryData storage _lottery = lottery[lotteryId];
+        _amt = _lottery.tokenBalances[token].userAmount;
+        _amt += _lottery.tokenBalances[token].sponsorAmount;
+        _lendingId = _lottery.tokenBalances[token].lendingId;
     }
 }
 
@@ -279,6 +250,7 @@ contract SponsorResolver is CandyResolver {
 
         sponsorBalance[openDraw][msg.sender].token = token;
         sponsorBalance[openDraw][msg.sender].principalAmt += amt;
+        TokenInterface(token).transferFrom(msg.sender, address(this), amt);
 
         // TODO - swappedAmt => Stable coin amt after the swap if user deposits other than stable coins
         uint swappedAmt = amt;

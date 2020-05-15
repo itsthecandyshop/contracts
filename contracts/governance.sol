@@ -1,28 +1,6 @@
 pragma solidity ^0.6.0;
 
-contract DSMath {
-    uint constant WAD = 10 ** 18;
-
-    function add(uint x, uint y) internal pure returns (uint z) {
-        require((z = x + y) >= x, "math-not-safe");
-    }
-
-    function mul(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || (z = x * y) / y == x, "math-not-safe");
-    }
-
-    function sub(uint x, uint y) internal pure returns (uint z) {
-        require((z = x - y) <= x, "sub-overflow");
-    }
-
-    function wmul(uint x, uint y) internal pure returns (uint z) {
-        z = add(mul(x, y), WAD / 2) / WAD;
-    }
-
-    function wdiv(uint x, uint y) internal pure returns (uint z) {
-        z = add(mul(x, WAD), y / 2) / y;
-    }
-}
+import {DSMath} from "./libraries/DSMath.sol";
 
 contract Governance is DSMath {
     address public admin;
@@ -33,6 +11,7 @@ contract Governance is DSMath {
 
     address public lendingProxy;
     address public swapProxy;
+
     uint public lendingId;
 
     modifier isAdmin {
@@ -85,7 +64,7 @@ contract Governance is DSMath {
         assert(_candyPrice != 0);
         assert(_duration != 0);
         assert(_lendingProxy != address(0));
-        // assert(_swapProxy != address(0));
+        assert(_swapProxy != address(0));
         admin = 0xe866ecE4bbD0Ac75577225Ee2C464ef16DC8b1F3;
         fee = _fee;
         candyPrice = _candyPrice;

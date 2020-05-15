@@ -7,7 +7,7 @@ module.exports = async function(deployer, network, accounts) {
     let args = [
         2 * 10 ** 15,
         String(10 ** 17),
-        300,
+        30,
         lendingContract.address,
         lendingContract.address
     ]
