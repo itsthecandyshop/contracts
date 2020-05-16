@@ -48,10 +48,8 @@ contract CandyStoreData {
     mapping (uint => address[]) public lotterySponsors;
 
     struct SponsorData {
-        address baseToken;
-        uint principalAmt;
         address token;
-        uint swappedAmt;
+        uint principalAmt;
     }
 
     function getUsersLength(uint lotteryId) public view returns(uint) {
@@ -152,10 +150,9 @@ contract Admin is LendingResolvers {
         }
 
         address[] storage sponsors = lotterySponsors[rewardDrawId];
-        // TODO - shall we convert back into orginal sponsor token.
         for (uint i = 0; i < sponsors.length; i++) {
             address sponsor = sponsors[i];
-            uint amt = sponsorBalance[rewardDrawId][sponsor].swappedAmt;
+            uint amt = sponsorBalance[rewardDrawId][sponsor].principalAmt;
             address token = sponsorBalance[rewardDrawId][sponsor].token;
             require(TokenInterface(token).balanceOf(address(this)) >= amt, "no-sufficient-sponsor-amt.");
             TokenInterface(token).transfer(sponsor, amt);
@@ -263,23 +260,17 @@ contract CandyResolver is Admin, DSMath {
 }
 
 contract SponsorResolver is CandyResolver {
-    function depositSponsor(address token, uint amt, uint times) external {
-        require(sponsorBalance[openDraw][msg.sender].token == address(0), "already-sponsor");
-        require(times != 0, "times-invaild");
+    function depositSponsor(address token, uint amt) external {
+        require(amt != 0, "amt-is-not-vaild");
+        require(stableCoins[token], "token-not-allowed!");
 
-        sponsorBalance[openDraw][msg.sender].baseToken = token;
+        sponsorBalance[openDraw][msg.sender].token = token;
         if (sponsorBalance[openDraw][msg.sender].principalAmt == 0) {
             lotterySponsors[openDraw].push(msg.sender);
         }
         sponsorBalance[openDraw][msg.sender].principalAmt += amt;
         TokenInterface(token).transferFrom(msg.sender, address(this), amt);
 
-        // TODO - swappedAmt => Stable coin amt after the swap if user deposits other than stable coins
-        uint swappedAmt = amt;
-        address swappedToken = token; //TODO - Should be a stable coin.
-        sponsorBalance[openDraw][msg.sender].token = swappedToken;
-        sponsorBalance[openDraw][msg.sender].swappedAmt += swappedAmt;
-        require(swappedAmt != 0, "amt-is-not-vaild");
         lottery[openDraw].tokenBalances[token].sponsorAmount += amt;
     }
 }
