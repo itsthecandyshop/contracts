@@ -45,10 +45,13 @@ contract CandyStoreData {
     mapping (uint => address[]) public lotteryUsers;
 
     mapping (uint => mapping (address => SponsorData)) public sponsorBalance;
+    mapping (uint => address[]) public lotterySponsors;
 
     struct SponsorData {
-        address token;
+        address baseToken;
         uint principalAmt;
+        address token;
+        uint swappedAmt;
     }
 
     function getUsersLength(uint lotteryId) public view returns(uint) {
@@ -143,6 +146,17 @@ contract Admin is LendingResolvers {
             require(totalPrizeAmt > amt, "withraw-error");
             TokenInterface(token).transfer(lotteryWinner, totalPrizeAmt);
         }
+
+        address[] storage sponsors = lotterySponsors[rewardDrawId];
+        // TODO - shall we convert back into orginal sponsor token.
+        for (uint i = 0; i < sponsors.length; i++) {
+            address sponsor = sponsors[i];
+            uint amt = sponsorBalance[rewardDrawId][sponsor].swappedAmt;
+            address token = sponsorBalance[rewardDrawId][sponsor].token;
+            require(TokenInterface(token).balanceOf(address(this)) >= amt, "no-sufficient-sponsor-amt.");
+            TokenInterface(token).transfer(sponsor, amt);
+        }
+
         rewardLottery.state = LotteryState.rewarded;
         rewardLottery.isDeposited = false;
 
@@ -248,31 +262,21 @@ contract SponsorResolver is CandyResolver {
         require(sponsorBalance[openDraw][msg.sender].token == address(0), "already-sponsor");
         require(times != 0, "times-invaild");
 
-        sponsorBalance[openDraw][msg.sender].token = token;
+        sponsorBalance[openDraw][msg.sender].baseToken = token;
+        if (sponsorBalance[openDraw][msg.sender].principalAmt == 0) {
+            lotterySponsors[openDraw].push(msg.sender);
+        }
         sponsorBalance[openDraw][msg.sender].principalAmt += amt;
         TokenInterface(token).transferFrom(msg.sender, address(this), amt);
 
         // TODO - swappedAmt => Stable coin amt after the swap if user deposits other than stable coins
         uint swappedAmt = amt;
+        address swappedToken = token; //TODO - Should be a stable coin.
+        sponsorBalance[openDraw][msg.sender].token = swappedToken;
+        sponsorBalance[openDraw][msg.sender].swappedAmt += swappedAmt;
         require(swappedAmt != 0, "amt-is-not-vaild");
         lottery[openDraw].tokenBalances[token].sponsorAmount += amt;
     }
-
-    // TODO - have to discuss about this.
-    // function withdrawSponsor(uint lotteryId, uint amt) external {
-    //     require(lotteryId < openDraw, "Lottery-id-not-vaild");
-    //     require(sponsorBalance[lotteryId][msg.sender].principalAmt > 0, "already-sponsor");
-
-    //     uint _lendingId = sponsorBalance[lotteryId][msg.sender].lendingId;
-    //     address _token = sponsorBalance[lotteryId][msg.sender].token;
-    //     uint principalAmt = sponsorBalance[openDraw][msg.sender].principalAmt;
-    //     uint _amt = amt > principalAmt ? principalAmt : amt;
-
-    //     //TODO - (Swap to orginal token)
-
-    //     require(_withdrawnAmt >= principalAmt, "withdrawn-more-amt");
-    //     sponsorBalance[openDraw][msg.sender].principalAmt -= _withdrawnAmt;
-    // }
 }
 
 contract SwapResolver is SponsorResolver {

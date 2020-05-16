@@ -54,18 +54,20 @@ contract Governance is DSMath {
     }
 
     constructor (
+        address _admin,
         uint _fee,
         uint _candyPrice,
         uint _duration,
         address _lendingProxy,
         address _swapProxy
     ) public {
+        assert(_admin != address(0));
         assert(_fee != 0);
         assert(_candyPrice != 0);
         assert(_duration != 0);
         assert(_lendingProxy != address(0));
         assert(_swapProxy != address(0));
-        admin = 0xe866ecE4bbD0Ac75577225Ee2C464ef16DC8b1F3;
+        admin = _admin;
         fee = _fee;
         candyPrice = _candyPrice;
         lotteryDuration = _duration;
