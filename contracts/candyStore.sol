@@ -63,6 +63,10 @@ contract CandyStoreData {
         return stableCoinsArr.length;
     }
 
+    function totalSponsors(uint lotteryId) public view returns(uint) {
+        return lotterySponsors[lotteryId].length;
+    }
+
     struct Assets {
         address token;
         uint amount;
@@ -242,7 +246,8 @@ contract Admin is LendingResolvers {
 
 
 contract CandyResolver is Admin, DSMath {
-    function getCandy(address token, uint amt) internal returns (uint candyAmt) {
+    function getCandy(address token, address user, uint amt) internal returns (uint candyAmt) {
+        require(user != address(0), "Not-vaild-user-address");
         LotteryData storage lotteryDraw = lottery[openDraw];
         uint candyPrice = lotteryDraw.candyPrice;
         candyAmt = mod(amt, candyPrice);
@@ -250,9 +255,9 @@ contract CandyResolver is Admin, DSMath {
         lotteryDraw.tokenBalances[token].userAmount += amt;
         uint candies = amt / candyPrice;
         for (uint i = 0; i < candies; i++) {
-            lotteryUsers[openDraw].push(msg.sender);
+            lotteryUsers[openDraw].push(user);
         }
-        lotteryTickets[openDraw][msg.sender] += candies;
+        lotteryTickets[openDraw][user] += candies;
         lotteryDraw.totalCandy += candies;
     }
 }
