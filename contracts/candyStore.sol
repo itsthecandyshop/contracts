@@ -290,8 +290,11 @@ contract Admin is LendingResolvers {
                 isFound = true;
             }
             if (isFound) {
-                // TODO - Have to check what will happen at the last elem;
-                stableCoinsArr[i] = stableCoinsArr[i + 1];
+                if (stableCoinsArr.length - 1 == i) {
+                    delete stableCoinsArr[i];
+                } else {
+                     stableCoinsArr[i] = stableCoinsArr[i + 1];
+                }
             }
         }
         stableCoins[token] = false;
