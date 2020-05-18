@@ -4,7 +4,7 @@ import {DSMath} from "../libraries/DSMath.sol";
 
 import {TokenInterface} from "../interfaces/token.sol";
 import {CTokenInterface, CETHInterface, ComptrollerInterface} from "../interfaces/compound.sol";
-import {AaveInterface} from "../interfaces/aave.sol";
+import {AaveInterface, AaveProviderInterface} from "../interfaces/aave.sol";
 import {Mapping} from "../interfaces/mapping.sol";
 
 contract Helpers is DSMath {
@@ -93,7 +93,8 @@ contract CompoundResolver is CompoundHelpers {
         if (_amt == uint(-1)) {
             TokenInterface tokenContract = TokenInterface(token);
             uint initialBal = token == getAddressETH() ? address(this).balance : tokenContract.balanceOf(address(this));
-            require(cTokenContract.redeem(cTokenContract.balanceOf(address(this))) == 0, "full-withdraw-failed");
+            uint cTknBal = cTokenContract.balanceOf(address(this));
+            require(cTokenContract.redeem(cTknBal) == 0, "full-withdraw-failed");
             uint finalBal = token == getAddressETH() ? address(this).balance : tokenContract.balanceOf(address(this));
             _amt = finalBal - initialBal;
         } else {
@@ -108,23 +109,17 @@ contract AaveHelpers is CompoundResolver {
     /**
      * @dev get Aave Address
     */
-    function getAaveAddress() internal pure returns (address) {
-        // return 0x398eC7346DcD622eDc5ae82352F02bE94C62d119; //mainnet
-        // return 0x580D4Fdc4BF8f9b5ae2fb9225D584fED4AD5375c; //kovan
-        return 0x4295Ee704716950A4dE7438086d6f0FBC0BA9472; //Ropsten
-    }
-
-    /**
-     * @dev get Aave Address
-    */
     function getAaveProviderAddress() internal pure returns (address) {
         // return 0x24a42fD28C976A61Df5D00D0599C34c4f90748c8; //mainnet
         // return 0x506B0B2CF20FAA8f38a4E2B524EE43e1f4458Cc5; //kovan
         return 0x1c8756FD2B28e9426CDBDcC7E3c4d64fa9A54728; //ropsten
     }
 
-    function getWithdrawBalance(address token) internal view returns (uint bal) {
-        (bal, , , , , , , , , ) = AaveInterface(getAaveProviderAddress()).getUserReserveData(token, msg.sender);
+    // TODO - change7878
+    function getWithdrawBalance(address token) public view returns (uint bal) {
+        AaveProviderInterface lendingProviderPool = AaveProviderInterface(getAaveProviderAddress());
+        AaveInterface aave = AaveInterface(lendingProviderPool.getLendingPool());
+        (bal, , , , , , , , , ) = aave.getUserReserveData(token, msg.sender);
     }
 }
 
@@ -137,7 +132,8 @@ contract AaveResolver is AaveHelpers {
      */
     function aaveDeposit(address token, uint amt) internal returns (uint _amt) {
         _amt = amt;
-        AaveInterface aave = AaveInterface(getAaveAddress());
+        AaveProviderInterface lendingProviderPool = AaveProviderInterface(getAaveProviderAddress());
+        AaveInterface aave = AaveInterface(lendingProviderPool.getLendingPool());
 
         uint ethAmt;
         if (token == getAddressETH()) {
@@ -145,11 +141,11 @@ contract AaveResolver is AaveHelpers {
             ethAmt = _amt;
         } else {
             TokenInterface tokenContract = TokenInterface(token);
-            tokenContract.approve(getAaveProviderAddress(), _amt);
+            tokenContract.approve(lendingProviderPool.getLendingPoolCore(), _amt);
         }
 
-        aave.setUserUseReserveAsCollateral(token, true);
         aave.deposit.value(ethAmt)(token, amt, 0); // TODO - need to set referralCode;
+        aave.setUserUseReserveAsCollateral(token, true);
 
        emit LogDepositAave(token, _amt);
     }
@@ -158,7 +154,8 @@ contract AaveResolver is AaveHelpers {
     function aaveWithdraw(address token, uint amt) internal returns (uint _amt) {
         _amt = amt;
 
-        AaveInterface aave = AaveInterface(getAaveAddress());
+        AaveProviderInterface lendingProviderPool = AaveProviderInterface(getAaveProviderAddress());
+        AaveInterface aave = AaveInterface(lendingProviderPool.getLendingPool());
         uint totalBal = getWithdrawBalance(token);
 
         _amt = _amt == uint(-1) ? totalBal : _amt;

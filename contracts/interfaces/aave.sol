@@ -22,3 +22,8 @@ interface AaveInterface {
             bool usageAsCollateralEnabled
         );
 }
+
+interface AaveProviderInterface {
+    function getLendingPool() external view returns (address);
+    function getLendingPoolCore() external view returns (address);
+}
