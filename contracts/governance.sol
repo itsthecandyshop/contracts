@@ -41,19 +41,19 @@ contract GovernanceData is DSMath {
 
     function changelendingProxy(address _proxy) external isAdmin {
         require(_proxy != address(0), "governance/no-deposit-proxy-address");
-        require(_proxy == lendingProxy, "governance/same-deposit-proxy-address");
+        require(_proxy != lendingProxy, "governance/same-deposit-proxy-address");
         lendingProxy = _proxy;
     }
 
     function changeRandom(address _randomness) external isAdmin {
         require(_randomness != address(0), "governance/no-randomnesss-address");
-        require(_randomness == randomness, "governance/same-randomnesss-address");
+        require(_randomness != randomness, "governance/same-randomnesss-address");
         randomness = _randomness;
     }
 
     function changeSwapProxy(address _proxy) external isAdmin {
         require(_proxy != address(0), "governance/no-swap-proxy-address");
-        require(_proxy == swapProxy, "governance/same-swap-proxy-address");
+        require(_proxy != swapProxy, "governance/same-swap-proxy-address");
         swapProxy = _proxy;
     }
 
