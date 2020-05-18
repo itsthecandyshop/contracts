@@ -1,8 +1,9 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.2;
 
 import {DSMath} from "./libraries/DSMath.sol";
 
 import {GovernanceInterface} from "./interfaces/governance.sol";
+import {RandomnessInterface} from "./interfaces/randomness.sol";
 import {TokenInterface} from "./interfaces/token.sol";
 
 contract CandyStoreData {
@@ -21,7 +22,12 @@ contract CandyStoreData {
     // Array of all the enabled Stable Tokens.
     address[] public stableCoinsArr;
     // Mapping of stable token => enabled/disabled.
-    mapping (address => bool) public stableCoins;
+    mapping (address => StableCoin) public stableCoins;
+
+    struct StableCoin {
+        bool isEnabled;
+        uint lendingId;
+    }
 
     // Mapping lottery id => details of the lottery.
     mapping (uint => LotteryData) public lottery;
@@ -34,6 +40,7 @@ contract CandyStoreData {
         uint candyPrice; // Price of candy.
         LotteryState state; // State of the lottery.
         mapping (address => LendingBalance) tokenBalances; // Token balances of each stable token.
+        uint winners;
         uint totalCandy; // Total candies distributed.
         uint startTime; // Start time of Lottery.
         uint duration; // Duration of each phase in the lottery.
@@ -42,7 +49,6 @@ contract CandyStoreData {
     struct LendingBalance {
         uint userAmount; // token amount collected from fee/arbs profit from swapping.
         uint sponsorAmount; // token amount deposited by sponsor.
-        uint lendingId; // To determine in which lending protocol Token has been deposited in committed phase.
     }
 
     // Mapping of lottery id => user address => no of candies
@@ -99,7 +105,7 @@ contract CandyStoreData {
         LotteryData storage _lottery = lottery[lotteryId];
         _amt = _lottery.tokenBalances[token].userAmount;
         _amt += _lottery.tokenBalances[token].sponsorAmount;
-        _lendingId = _lottery.tokenBalances[token].lendingId;
+        _lendingId = stableCoins[token].lendingId;
     }
 }
 
@@ -162,11 +168,38 @@ contract Admin is LendingResolvers {
         _;
     }
 
+    function splitRandom(uint lotteryId) internal view returns(uint[] memory){
+        uint randomNum = RandomnessInterface(governanceContract.randomness()).randomNumber(lotteryId);
+        require(randomNum != 0, "random-number-not-found");
+        uint parts = lottery[lotteryId].winners;
+        uint totalUsers = lottery[lotteryId].totalCandy;
+        require(randomNum > 0, "random-not-found");
+        require(parts > 0 && totalUsers > 0, "parts/totalUsers-is-0");
+        uint[] memory randamArr = new uint[](parts);
+        for(uint i = 0; i < parts; i++) {
+            uint randomPart = uint(keccak256(abi.encodePacked(i, randomNum, block.difficulty*now, now)));
+            randamArr[i] = randomPart % totalUsers;
+        }
+        return randamArr;
+    }
+
+    function getRandom() external {
+        RandomnessInterface randomnessContract = RandomnessInterface(governanceContract.randomness());
+        
+        uint rewardDrawId = openDraw - 1;
+        LotteryData storage rewardLottery = lottery[rewardDrawId];
+        
+        uint randomNum = randomnessContract.randomNumber(rewardDrawId);
+        require(rewardLottery.state == LotteryState.committed, "lottery-not-committed");
+        require(randomNum == 0, "random-number-not-found");
+        randomnessContract.getRandom(rewardDrawId, rewardLottery.totalCandy);
+    }
+
     /**
      * @dev Reward the winner of the lottery.
      * @param rewardDrawId Reward Lottery id.
     */
-    function rewardDraw(uint rewardDrawId) external isAdmin {
+    function rewardDraw(uint rewardDrawId) public isAdmin {
         LotteryData storage rewardLottery = lottery[rewardDrawId];
 
         require(rewardLottery.state == LotteryState.committed, "lottery-not-committed");
@@ -174,20 +207,26 @@ contract Admin is LendingResolvers {
         // solium-disable-next-line security/no-block-members
         require(endTime <= now, "timer-not-over-yet");
 
-        uint random = 5; // random number b/w [0, lotteryUsers.length];
-        address lotteryWinner = lotteryUsers[rewardDrawId][random]; // Lottery Winner.
-
+        uint[] memory randoms = splitRandom(rewardDrawId);
         // Withdraw assets from the lending protocol and reward the winner address.
         for (uint i = 0; i < stableCoinsArr.length; i++) {
             address token = stableCoinsArr[i];
-            uint lendingId = rewardLottery.tokenBalances[token].lendingId;
+            uint lendingId = stableCoins[token].lendingId;
 
             uint totalPrizeAmt = _withdraw(lendingId, token, uint(-1));
             totalPrizeAmt -= rewardLottery.tokenBalances[token].sponsorAmount;
 
-            uint amt = rewardLottery.tokenBalances[token].userAmount;
-            require(totalPrizeAmt > amt, "withraw-error");
-            TokenInterface(token).transfer(lotteryWinner, totalPrizeAmt);
+            uint collectedFee = rewardLottery.tokenBalances[token].userAmount;
+            require(totalPrizeAmt > collectedFee, "withraw-error");
+
+            uint prizeAmt = totalPrizeAmt / randoms.length;
+            for (uint j = 0; j < randoms.length; j++) {
+                uint winnerAmt = totalPrizeAmt >= prizeAmt ? prizeAmt : totalPrizeAmt;
+                uint _random = randoms[j];
+                address lotteryWinner = lotteryUsers[rewardDrawId][_random]; // Lottery Winner.
+                TokenInterface(token).transfer(lotteryWinner, winnerAmt);
+                totalPrizeAmt -= winnerAmt;
+            }
         }
 
         address[] storage sponsors = lotterySponsors[rewardDrawId];
@@ -206,9 +245,8 @@ contract Admin is LendingResolvers {
     /**
      * @dev Deposit assets locked for a specific lottery and earn interest.
      * @param commitDrawId commit lottery id.
-     * @param lendingId lending proctocol id.
     */
-    function _commit(uint commitDrawId, uint lendingId) internal {
+    function _commit(uint commitDrawId) internal {
         LotteryData storage commitLottery = lottery[commitDrawId];
         require(commitLottery.state == LotteryState.draw, "lottery-committed/rewarded");
 
@@ -219,14 +257,13 @@ contract Admin is LendingResolvers {
         // Deposit assets in lending protocol.
         for (uint i = 0; i < stableCoinsArr.length; i++) {
             address token = stableCoinsArr[i];
-
+            uint lendingId = stableCoins[token].lendingId;
             uint totalFeeAmt = commitLottery.tokenBalances[token].userAmount;
             totalFeeAmt += commitLottery.tokenBalances[token].sponsorAmount;
 
             uint depositedAmt = _deposit(lendingId, token, totalFeeAmt);
 
             require(depositedAmt >= totalFeeAmt, "deposited-amount-less");
-            commitLottery.tokenBalances[token].lendingId = lendingId;
         }
         commitLottery.state = LotteryState.committed;
     }
@@ -234,16 +271,15 @@ contract Admin is LendingResolvers {
 
     /**
      * @dev Create new lottery and commit the current on going lottery.
-     * @param lendingId lending proctocol id.
     */
-    function openNewDraw(uint lendingId) external isAdmin {
+    function openNewDraw() external isAdmin {
         uint currentDraw = openDraw;
         // solium-disable-next-line security/no-block-members
         uint timeNow = now;
 
         if (currentDraw != 0) {
             // Commit current lottery.
-            _commit(currentDraw, lendingId);
+            _commit(currentDraw);
             if (currentDraw >= 2) {
                 require(lottery[currentDraw - 1].state == LotteryState.rewarded, "lottery-not-committed");
             }
@@ -258,6 +294,7 @@ contract Admin is LendingResolvers {
                 candyPrice: governanceContract.candyPrice(),
                 lotteryId: nextDraw,
                 state: LotteryState.draw,
+                winners: 5,
                 totalCandy: 0,
                 startTime: timeNow,
                 duration: governanceContract.lotteryDuration()
@@ -272,10 +309,11 @@ contract Admin is LendingResolvers {
      * @dev Enable stable token.
      * @param token token address.
     */
-    function addStableCoin(address token) external isAdmin {
-        require(!stableCoins[token], "Token-already-added");
+    function addStableCoin(address token, uint lendingId) external isAdmin {
+        require(!stableCoins[token].isEnabled, "Token-already-added");
         stableCoinsArr.push(token);
-        stableCoins[token] = true;
+        stableCoins[token].isEnabled = true;
+        stableCoins[token].lendingId = lendingId;
     }
 
     /**
@@ -283,7 +321,7 @@ contract Admin is LendingResolvers {
      * @param token token address.
     */
     function removeStableCoin(address token) external isAdmin {
-        require(stableCoins[token], "Token-not-added");
+        require(stableCoins[token].isEnabled, "Token-not-added");
         bool isFound = false;
         for (uint i = 0; i < stableCoinsArr.length; i++) {
             if (token == stableCoinsArr[i]) {
@@ -297,7 +335,8 @@ contract Admin is LendingResolvers {
                 }
             }
         }
-        stableCoins[token] = false;
+        stableCoins[token].isEnabled = true;
+        stableCoins[token].lendingId = 0;
     }
 }
 
@@ -310,11 +349,13 @@ contract CandyResolver is Admin, DSMath {
      * @param amt token amount.
     */
     function mintCandy(address token, address user, uint amt) internal returns (uint candyAmt) {
-        require(user != address(0), "Not-vaild-user-address");
         LotteryData storage lotteryDraw = lottery[openDraw];
+        require(user != address(0), "Not-vaild-user-address");
+
         uint candyPrice = lotteryDraw.candyPrice;
         candyAmt = mod(amt, candyPrice);
         require(candyAmt == 0 && amt != 0, "amt-is-not-vaild");
+
         lotteryDraw.tokenBalances[token].userAmount += amt;
         uint candies = amt / candyPrice;
         for (uint i = 0; i < candies; i++) {
@@ -333,7 +374,7 @@ contract SponsorResolver is CandyResolver {
     */
     function depositSponsor(address token, uint amt) external {
         require(amt != 0, "amt-is-not-vaild");
-        require(stableCoins[token], "token-not-allowed!");
+        require(stableCoins[token].isEnabled, "token-not-allowed!");
 
         sponsorBalance[openDraw][msg.sender].token = token;
         if (sponsorBalance[openDraw][msg.sender].principalAmt == 0) {
@@ -385,24 +426,25 @@ contract CandyStore is SwapResolver {
         governanceContract = GovernanceInterface(_governance);
     }
 
-    // function swap(
-    //     uint swapId,
-    //     address buyToken,
-    //     address sellToken,
-    //     address feeToken,
-    //     uint sellAmt,
-    //     uint buyAmt,
-    //     uint slippage
-    // ) external {
-    //     (uint buyAmt, uint feeAmt) = _swap(
-    //             swapId,
-    //             buyToken,
-    //             sellToken,
-    //             feeToken,
-    //             sellAmt,
-    //             buyAmt,
-    //             slippage
-    //         );
-    //     getCandy(feeToken, feeAmt);
-    // }
+    function swap(
+        // uint swapId,
+        // address buyToken,
+        // address sellToken,
+        address feeToken,
+        uint sellAmt
+        // uint buyAmt,
+        // uint slippage
+    ) external {
+        // (uint buyAmt, uint feeAmt) = _swap(
+        //         swapId,
+        //         buyToken,
+        //         sellToken,
+        //         feeToken,
+        //         sellAmt,
+        //         buyAmt,
+        //         slippage
+        //     );
+        TokenInterface(feeToken).transferFrom(msg.sender, address(this), sellAmt);
+        mintCandy(feeToken, msg.sender, sellAmt);
+    }
 }

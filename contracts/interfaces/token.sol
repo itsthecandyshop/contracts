@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.2;
 
 interface TokenInterface {
     function approve(address, uint) external;

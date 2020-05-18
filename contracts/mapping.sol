@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.2;
 pragma experimental ABIEncoderV2;
 
 import {GovernanceInterface} from "./interfaces/governance.sol";

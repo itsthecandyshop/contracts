@@ -5,6 +5,7 @@ module.exports = async function(deployer, network, accounts) {
     var lendingContract = await lending.deployed();
 
     let args = [
+        accounts[0],
         2 * 10 ** 15,
         String(10 ** 17),
         30,

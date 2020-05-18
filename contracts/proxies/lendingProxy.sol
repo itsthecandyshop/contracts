@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.2;
 
 import {DSMath} from "../libraries/DSMath.sol";
 
@@ -19,7 +19,8 @@ contract Helpers is DSMath {
      * @dev Return Mapping Addresses
      */
     function getMappingAddr() internal pure returns (address) {
-        return 0xe81F70Cc7C0D46e12d70efc60607F16bbD617E88; // Mapping Address
+        // return 0xe81F70Cc7C0D46e12d70efc60607F16bbD617E88; // Mapping Address
+        return 0x2DB74571B289054213200162780a1024eF291495; // Ropsten
     }
 }
 
@@ -30,7 +31,8 @@ contract CompoundHelpers is Helpers {
      */
     function getComptrollerAddress() internal pure returns (address) {
         // return 0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B; // mainnet
-        return 0x1f5D7F3CaAC149fE41b8bd62A3673FE6eC0AB73b; //kovan
+        // return 0x1f5D7F3CaAC149fE41b8bd62A3673FE6eC0AB73b; //kovan
+        return 0xe03718b458a2E912141CF3fC8daB648362ee7463; //Ropsten
     }
 
     /**
@@ -108,7 +110,8 @@ contract AaveHelpers is CompoundResolver {
     */
     function getAaveAddress() internal pure returns (address) {
         // return 0x398eC7346DcD622eDc5ae82352F02bE94C62d119; //mainnet
-        return 0x580D4Fdc4BF8f9b5ae2fb9225D584fED4AD5375c;
+        // return 0x580D4Fdc4BF8f9b5ae2fb9225D584fED4AD5375c; //kovan
+        return 0x4295Ee704716950A4dE7438086d6f0FBC0BA9472; //Ropsten
     }
 
     /**
@@ -116,7 +119,8 @@ contract AaveHelpers is CompoundResolver {
     */
     function getAaveProviderAddress() internal pure returns (address) {
         // return 0x24a42fD28C976A61Df5D00D0599C34c4f90748c8; //mainnet
-        return 0x506B0B2CF20FAA8f38a4E2B524EE43e1f4458Cc5; //kovan
+        // return 0x506B0B2CF20FAA8f38a4E2B524EE43e1f4458Cc5; //kovan
+        return 0x1c8756FD2B28e9426CDBDcC7E3c4d64fa9A54728; //ropsten
     }
 
     function getWithdrawBalance(address token) internal view returns (uint bal) {

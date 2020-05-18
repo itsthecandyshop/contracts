@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.2;
 
 interface AaveInterface {
     function deposit(address _reserve, uint256 _amount, uint16 _referralCode) external payable;

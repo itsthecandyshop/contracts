@@ -1,9 +1,13 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.6.2;
 
 import {DSMath} from "./libraries/DSMath.sol";
+import "./vrf/VRFConsumerBase.sol";
 
-contract Governance is DSMath {
+contract GovernanceData is DSMath {
     address public admin;
+
+    address public candyStore;
+    address public randomness;
 
     uint public fee;
     uint public candyPrice;
@@ -41,6 +45,12 @@ contract Governance is DSMath {
         lendingProxy = _proxy;
     }
 
+    function changeRandom(address _randomness) external isAdmin {
+        require(_randomness != address(0), "governance/no-randomnesss-address");
+        require(_randomness == randomness, "governance/same-randomnesss-address");
+        randomness = _randomness;
+    }
+
     function changeSwapProxy(address _proxy) external isAdmin {
         require(_proxy != address(0), "governance/no-swap-proxy-address");
         require(_proxy == swapProxy, "governance/same-swap-proxy-address");
@@ -52,7 +62,9 @@ contract Governance is DSMath {
         require(admin != _admin, "governance/same-admin");
         admin = _admin;
     }
+}
 
+contract Governance is GovernanceData {
     constructor (
         address _admin,
         uint _fee,
@@ -73,5 +85,12 @@ contract Governance is DSMath {
         lotteryDuration = _duration;
         lendingProxy = _lendingProxy;
         swapProxy = _swapProxy;
+    }
+
+    function init(address _candyStore, address _randomness) public isAdmin {
+        require(_randomness != address(0), "governance/no-randomnesss-address");
+        require(_candyStore != address(0), "governance/no-candyStore-address");
+        randomness = _randomness;
+        candyStore = _candyStore;
     }
 }
