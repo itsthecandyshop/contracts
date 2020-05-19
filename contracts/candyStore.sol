@@ -386,6 +386,9 @@ contract SponsorResolver is CandyResolver {
     function depositSponsor(address token, uint amt) external {
         require(amt != 0, "amt-is-not-vaild");
         require(stableCoins[token].isEnabled, "token-not-allowed!");
+        if(sponsorBalance[openDraw][msg.sender].token != address(0)) {
+            require(sponsorBalance[openDraw][msg.sender].token == token, "token-is-not-same");
+        }
 
         sponsorBalance[openDraw][msg.sender].token = token;
         if (sponsorBalance[openDraw][msg.sender].principalAmt == 0) {
