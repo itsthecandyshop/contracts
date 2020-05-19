@@ -44,11 +44,13 @@ contract CandyStoreData {
         uint totalCandy; // Total candies distributed.
         uint startTime; // Start time of Lottery.
         uint duration; // Duration of each phase in the lottery.
+        uint[] lotteryWinners;
     }
 
     struct LendingBalance {
         uint userAmount; // token amount collected from fee/arbs profit from swapping.
         uint sponsorAmount; // token amount deposited by sponsor.
+        uint totalPrizeAmount;
     }
 
     // Mapping of lottery id => user address => no of candies
@@ -69,7 +71,7 @@ contract CandyStoreData {
     /**
      * @dev Total no of stable Tokens enabled.
     */
-    function getStableCoinsLength() public view returns(uint) {
+    function totalStableCoins() public view returns(uint) {
         return stableCoinsArr.length;
     }
 
@@ -77,7 +79,7 @@ contract CandyStoreData {
      * @dev Total no of user address of each candy.
      * @param lotteryId Lottery id.
     */
-    function getUsersLength(uint lotteryId) public view returns(uint) {
+    function totalUsers(uint lotteryId) public view returns(uint) {
         require(openDraw >= lotteryId, "lotteryId-not-vaild");
         return lotteryUsers[lotteryId].length;
     }
@@ -92,7 +94,8 @@ contract CandyStoreData {
 
     struct Assets {
         address token;
-        uint amount;
+        uint userAmount;
+        uint sponsorAmount;
     }
 
     /**
@@ -100,12 +103,12 @@ contract CandyStoreData {
      * @param lotteryId Lottery id.
      * @param token token address.
     */
-    function getAssetLocked(uint lotteryId, address token) public view returns(uint _amt, uint _lendingId) {
+    function getAssetLocked(uint lotteryId, address token) public view returns(uint _userAmt, uint _sponsorAmt, uint _prizeAmt) {
         require(openDraw >= lotteryId, "lotteryId-not-vaild");
         LotteryData storage _lottery = lottery[lotteryId];
-        _amt = _lottery.tokenBalances[token].userAmount;
-        _amt += _lottery.tokenBalances[token].sponsorAmount;
-        _lendingId = stableCoins[token].lendingId;
+        _userAmt = _lottery.tokenBalances[token].userAmount;
+        _sponsorAmt = _lottery.tokenBalances[token].sponsorAmount;
+        _prizeAmt = _lottery.tokenBalances[token].totalPrizeAmount;
     }
 }
 
@@ -185,7 +188,9 @@ contract Admin is LendingResolvers {
 
     function _rewardUser(uint rewardDrawId) internal {
         LotteryData storage rewardLottery = lottery[rewardDrawId];
+        require(rewardLottery.lotteryWinners.length == 0, "Already-rewarded-winners");
         uint[] memory randoms = _splitRandom(rewardDrawId);
+        rewardLottery.lotteryWinners = randoms;
         // Withdraw assets from the lending protocol and reward the winner address.
         for (uint i = 0; i < stableCoinsArr.length; i++) {
             address token = stableCoinsArr[i];
@@ -198,7 +203,7 @@ contract Admin is LendingResolvers {
                     uint totalPrizeAmt = _withdraw(lendingId, token, uint(-1));
                     totalPrizeAmt -= SponsorPrizeAmt;
                     // require(totalPrizeAmt > collectedFee, "withraw-error");
-
+                    rewardLottery.tokenBalances[token].totalPrizeAmount = totalPrizeAmt;
                     uint prizeAmt = totalPrizeAmt / randoms.length;
                     for (uint j = 0; j < randoms.length; j++) {
                         uint winnerAmt = totalPrizeAmt >= prizeAmt ? prizeAmt : totalPrizeAmt;
@@ -308,7 +313,8 @@ contract Admin is LendingResolvers {
                 winners: 5,
                 totalCandy: 0,
                 startTime: timeNow,
-                duration: governanceContract.lotteryDuration()
+                duration: governanceContract.lotteryDuration(),
+                lotteryWinners: new uint[](0)
                 }
             );
         require(lotteryUsers[nextDraw].length == 0, "error-opening-next-draw");
