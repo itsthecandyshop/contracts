@@ -4,7 +4,7 @@ import {DSMath} from "../libraries/DSMath.sol";
 
 import {TokenInterface} from "../interfaces/token.sol";
 import {CTokenInterface, CETHInterface, ComptrollerInterface} from "../interfaces/compound.sol";
-import {AaveInterface, AaveProviderInterface} from "../interfaces/aave.sol";
+import {AaveInterface, AaveCoreInterface, AaveProviderInterface, ATokenInterface} from "../interfaces/aave.sol";
 import {Mapping} from "../interfaces/mapping.sol";
 
 contract Helpers is DSMath {
@@ -155,19 +155,15 @@ contract AaveResolver is AaveHelpers {
         _amt = amt;
 
         AaveProviderInterface lendingProviderPool = AaveProviderInterface(getAaveProviderAddress());
-        AaveInterface aave = AaveInterface(lendingProviderPool.getLendingPool());
-        uint totalBal = getWithdrawBalance(token);
+        AaveCoreInterface aaveCore = AaveCoreInterface(lendingProviderPool.getLendingPoolCore());
+        ATokenInterface atoken = ATokenInterface(aaveCore.getReserveATokenAddress(token));
 
-        _amt = _amt == uint(-1) ? totalBal : _amt;
-        uint _amtLeft = sub(totalBal, _amt);
+        uint totalBal = atoken.balanceOf(address(this));
+
+        _amt = _amt >= totalBal ? totalBal : _amt;
 
         uint initialBal = token == getAddressETH() ? address(this).balance : TokenInterface(token).balanceOf(address(this));
-        aave.redeemUnderlying(
-            token,
-            payable(address(this)),
-            _amt,
-            _amtLeft
-        );
+        atoken.redeem(_amt);
         uint finialBal = token == getAddressETH() ? address(this).balance : TokenInterface(token).balanceOf(address(this));
         uint withdrawnAmt = sub(finialBal, initialBal);
         require(withdrawnAmt >= _amt, "withdraw-error");

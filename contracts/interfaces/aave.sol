@@ -27,3 +27,13 @@ interface AaveProviderInterface {
     function getLendingPool() external view returns (address);
     function getLendingPoolCore() external view returns (address);
 }
+
+interface AaveCoreInterface {
+    function getReserveATokenAddress(address _reserve) external view returns (address);
+}
+
+interface ATokenInterface {
+    function redeem(uint256 _amount) external;
+    function balanceOf(address _user) external view returns(uint256);
+    function principalBalanceOf(address _user) external view returns(uint256);
+}
