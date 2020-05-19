@@ -369,8 +369,11 @@ contract CandyResolver is Admin, DSMath {
         LotteryData storage lotteryDraw = lottery[openDraw];
         require(user != address(0), "Not-vaild-user-address");
 
+        uint tokenDec = TokenInterface(token).decimals();
+        uint _amt18 = mul(amt, 10 ** (18 - tokenDec));
+
         uint candyPrice = lotteryDraw.candyPrice;
-        candyAmt = mod(amt, candyPrice);
+        candyAmt = mod(_amt18, candyPrice);
         require(candyAmt == 0 && amt != 0, "amt-is-not-vaild");
 
         lotteryDraw.tokenBalances[token].userAmount += amt;
