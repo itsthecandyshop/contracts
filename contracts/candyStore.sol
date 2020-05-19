@@ -168,7 +168,7 @@ contract Admin is LendingResolvers {
         _;
     }
 
-    function splitRandom(uint lotteryId) internal view returns(uint[] memory){
+    function _splitRandom(uint lotteryId) internal view returns(uint[] memory){
         uint randomNum = RandomnessInterface(governanceContract.randomness()).randomNumber(lotteryId);
         require(randomNum != 0, "random-number-not-found");
         uint parts = lottery[lotteryId].winners;
@@ -181,6 +181,47 @@ contract Admin is LendingResolvers {
             randamArr[i] = randomPart % totalUsers;
         }
         return randamArr;
+    }
+
+    function _rewardUser(uint rewardDrawId) internal {
+        LotteryData storage rewardLottery = lottery[rewardDrawId];
+        uint[] memory randoms = _splitRandom(rewardDrawId);
+        // Withdraw assets from the lending protocol and reward the winner address.
+        for (uint i = 0; i < stableCoinsArr.length; i++) {
+            address token = stableCoinsArr[i];
+            if (token != address(0)) {
+                uint lendingId = stableCoins[token].lendingId;
+                uint SponsorPrizeAmt = rewardLottery.tokenBalances[token].sponsorAmount;
+                uint userPrizeAmt = rewardLottery.tokenBalances[token].userAmount;
+                
+                if ( userPrizeAmt > 0 || SponsorPrizeAmt > 0) {
+                    uint totalPrizeAmt = _withdraw(lendingId, token, uint(-1));
+                    totalPrizeAmt -= SponsorPrizeAmt;
+                    // require(totalPrizeAmt > collectedFee, "withraw-error");
+
+                    uint prizeAmt = totalPrizeAmt / randoms.length;
+                    for (uint j = 0; j < randoms.length; j++) {
+                        uint winnerAmt = totalPrizeAmt >= prizeAmt ? prizeAmt : totalPrizeAmt;
+                        uint _random = randoms[j];
+                        address lotteryWinner = lotteryUsers[rewardDrawId][_random]; // Lottery Winner.
+                        TokenInterface(token).transfer(lotteryWinner, winnerAmt);
+                        totalPrizeAmt -= winnerAmt;
+                    }
+                }
+            }
+        }
+    }
+
+    function _rewardSponsor(uint rewardDrawId) internal {
+        address[] storage sponsors = lotterySponsors[rewardDrawId];
+        // Transfer back the sponsor pricipal amount.
+        for (uint i = 0; i < sponsors.length; i++) {
+            address sponsor = sponsors[i];
+            uint amt = sponsorBalance[rewardDrawId][sponsor].principalAmt;
+            address token = sponsorBalance[rewardDrawId][sponsor].token;
+            require(TokenInterface(token).balanceOf(address(this)) >= amt, "no-sufficient-sponsor-amt.");
+            TokenInterface(token).transfer(sponsor, amt);
+        }
     }
 
     function getRandom() external {
@@ -206,38 +247,8 @@ contract Admin is LendingResolvers {
         uint endTime = rewardLottery.startTime + rewardLottery.duration * 2;
         // solium-disable-next-line security/no-block-members
         require(endTime <= now, "timer-not-over-yet");
-
-        uint[] memory randoms = splitRandom(rewardDrawId);
-        // Withdraw assets from the lending protocol and reward the winner address.
-        for (uint i = 0; i < stableCoinsArr.length; i++) {
-            address token = stableCoinsArr[i];
-            uint lendingId = stableCoins[token].lendingId;
-
-            uint totalPrizeAmt = _withdraw(lendingId, token, uint(-1));
-            totalPrizeAmt -= rewardLottery.tokenBalances[token].sponsorAmount;
-
-            uint collectedFee = rewardLottery.tokenBalances[token].userAmount;
-            require(totalPrizeAmt > collectedFee, "withraw-error");
-
-            uint prizeAmt = totalPrizeAmt / randoms.length;
-            for (uint j = 0; j < randoms.length; j++) {
-                uint winnerAmt = totalPrizeAmt >= prizeAmt ? prizeAmt : totalPrizeAmt;
-                uint _random = randoms[j];
-                address lotteryWinner = lotteryUsers[rewardDrawId][_random]; // Lottery Winner.
-                TokenInterface(token).transfer(lotteryWinner, winnerAmt);
-                totalPrizeAmt -= winnerAmt;
-            }
-        }
-
-        address[] storage sponsors = lotterySponsors[rewardDrawId];
-        // Transfer back the sponsor pricipal amount.
-        for (uint i = 0; i < sponsors.length; i++) {
-            address sponsor = sponsors[i];
-            uint amt = sponsorBalance[rewardDrawId][sponsor].principalAmt;
-            address token = sponsorBalance[rewardDrawId][sponsor].token;
-            require(TokenInterface(token).balanceOf(address(this)) >= amt, "no-sufficient-sponsor-amt.");
-            TokenInterface(token).transfer(sponsor, amt);
-        }
+        _rewardUser(rewardDrawId);
+        _rewardSponsor(rewardDrawId);
 
         rewardLottery.state = LotteryState.rewarded;
     }
@@ -329,13 +340,13 @@ contract Admin is LendingResolvers {
             }
             if (isFound) {
                 if (stableCoinsArr.length - 1 == i) {
-                    delete stableCoinsArr[i];
+                    stableCoinsArr.pop();
                 } else {
                      stableCoinsArr[i] = stableCoinsArr[i + 1];
                 }
             }
         }
-        stableCoins[token].isEnabled = true;
+        stableCoins[token].isEnabled = false;
         stableCoins[token].lendingId = 0;
     }
 }
