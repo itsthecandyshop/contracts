@@ -418,12 +418,14 @@ contract CandyStore is SponsorResolver {
         governanceContract = GovernanceInterface(_governance);
     }
 
-    function swap(
+    function buyCandy(
         address token,
-        uint amount
+        uint amount,
+        address to
     ) external {
         require(msg.sender == governanceContract.swapProxy(), "msg.sender-is-arbs.");
+        require(to != address(0), "to-address-not-vaild.");
         TokenInterface(token).transferFrom(msg.sender, address(this), amount);
-        mintCandy(token, msg.sender, amount);
+        mintCandy(token, to, amount);
     }
 }
