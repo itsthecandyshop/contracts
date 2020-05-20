@@ -20,7 +20,6 @@ interface CandyStoreInterface {
         uint fee; // Swapping fee to buy candy.
         uint candyPrice; // Price of candy.
         LotteryState state; // State of the lottery.
-        mapping (address => LendingBalance) tokenBalances; // Token balances of each stable token.
         uint winners;
         uint totalCandy; // Total candies distributed.
         uint startTime; // Start time of Lottery.
