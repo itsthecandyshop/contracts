@@ -120,7 +120,8 @@ contract LendingResolvers is CandyStoreData {
      * @param token token address.
      * @param amt token amount.
     */
-    function _deposit(uint lendingId, address token, uint amt) internal returns (uint _depositedAmt) {
+    // TODO - change9898
+    function _deposit(uint lendingId, address token, uint amt) public returns (uint _depositedAmt) {
         address _target = governanceContract.lendingProxy();
         (bool status, bytes memory returnedData) = _target
             .delegatecall(
@@ -145,7 +146,8 @@ contract LendingResolvers is CandyStoreData {
      * @param token token address.
      * @param amt token amount.
     */
-    function _withdraw(uint lendingId, address token, uint amt) internal returns (uint withdrawnAmt) {
+    // TODO - change9898
+    function _withdraw(uint lendingId, address token, uint amt) public returns (uint withdrawnAmt) {
         address _target = governanceContract.lendingProxy();
         (bool status, bytes memory returnedData) = _target
             .delegatecall(
@@ -297,7 +299,8 @@ contract Admin is LendingResolvers {
             // Commit current lottery.
             _commit(currentDraw);
             if (currentDraw >= 2) {
-                require(lottery[currentDraw - 1].state == LotteryState.rewarded, "lottery-not-committed");
+                 // TODO - change9898
+                // require(lottery[currentDraw - 1].state == LotteryState.rewarded, "lottery-not-committed");
             }
         }
 
@@ -410,64 +413,17 @@ contract SponsorResolver is CandyResolver {
     }
 }
 
-contract SwapResolver is SponsorResolver {
-    function _swap(
-        uint _swapId,
-        address buyToken,
-        address sellToken,
-        address feeToken,
-        uint sellAmt,
-        uint buyAmt,
-        uint slippage
-    ) internal returns (address token, uint _buyAmt, uint _feeAmt) {
-        address _target = governanceContract.swapProxy();
-        (bool status, bytes memory returnedData) = _target
-            .delegatecall(
-            abi.encodeWithSelector(
-                bytes4(
-                    keccak256(
-                        "swap(uint256,address,address,address,uint256,uint256,uint256)"
-                    )
-                ),
-                _swapId,
-                buyToken,
-                sellToken,
-                feeToken,
-                sellAmt,
-                buyAmt,
-                slippage
-            )
-        );
-        require(status, "Delegate/swap failed");
-        (token, _buyAmt, _feeAmt) = abi.decode(returnedData, (address, uint, uint));
-    }
-
-}
-
-contract CandyStore is SwapResolver {
+contract CandyStore is SponsorResolver {
     constructor (address _governance) public {
         governanceContract = GovernanceInterface(_governance);
     }
 
     function swap(
-        // uint swapId,
-        // address buyToken,
-        // address sellToken,
-        address feeToken,
-        uint sellAmt
-        // uint buyAmt,
-        // uint slippage
+        address token,
+        uint amount
     ) external {
-        // (uint buyAmt, uint feeAmt) = _swap(
-        //         swapId,
-        //         buyToken,
-        //         sellToken,
-        //         feeToken,
-        //         sellAmt,
-        //         buyAmt,
-        //         slippage
-        //     );
-        TokenInterface(feeToken).transferFrom(msg.sender, address(this), sellAmt);
-        mintCandy(feeToken, msg.sender, sellAmt);
+        require(msg.sender == governanceContract.swapProxy(), "msg.sender-is-arbs.");
+        TokenInterface(token).transferFrom(msg.sender, address(this), amount);
+        mintCandy(token, msg.sender, amount);
     }
 }
