@@ -16,8 +16,6 @@ contract GovernanceData is DSMath {
     address public lendingProxy;
     address public swapProxy;
 
-    uint public lendingId;
-
     modifier isAdmin {
         require(admin == msg.sender, "not-a-admin");
         _;
