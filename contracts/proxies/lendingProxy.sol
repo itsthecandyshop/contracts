@@ -119,7 +119,7 @@ contract AaveHelpers is CompoundResolver {
     function getWithdrawBalance(address token) public view returns (uint bal) {
         AaveProviderInterface lendingProviderPool = AaveProviderInterface(getAaveProviderAddress());
         AaveInterface aave = AaveInterface(lendingProviderPool.getLendingPool());
-        (bal, , , , , , , , , ) = aave.getUserReserveData(token, msg.sender);
+        (bal, , , , , , , , , ) = aave.getUserReserveData(token, address(this));
     }
 }
 
