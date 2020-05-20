@@ -28,4 +28,10 @@ interface CandyStoreInterface {
 
     function openDraw() external view returns (uint);
     function lottery(uint) external view returns (LotteryData memory);
+    function getAssetLocked(uint lotteryId, address token) external view returns(uint _userAmt, uint _sponsorAmt, uint _prizeAmt);
+    function totalStableCoins() external view returns(uint);
+    function totalUsers(uint lotteryId) external view returns(uint);
+    function totalSponsors(uint lotteryId) external view returns(uint);
+
+    function buyCandy(address token, uint amt, address to) external;
 }
