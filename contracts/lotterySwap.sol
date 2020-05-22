@@ -1,4 +1,5 @@
 pragma solidity ^0.6.2;
+pragma experimental ABIEncoderV2;
 
 import {DSMath} from "./libraries/DSMath.sol";
 
@@ -108,7 +109,7 @@ contract ArbsResolver is Helpers {
     event LogLeftAmount(uint amt);
 
     modifier isArbs {
-        require(msg.sender == governance.candyStoreArbs(), "not-candyStoreArbs-address");
+        // require(msg.sender == governance.candyStoreArbs(), "not-candyStoreArbs-address");
         _;
     }
 
@@ -200,7 +201,7 @@ contract ArbsResolver is Helpers {
     }
 }
 
-contract LotterySwap is Helpers {
+contract LotterySwap is ArbsResolver {
     constructor(
         address _governance,
         address router,
@@ -212,4 +213,6 @@ contract LotterySwap is Helpers {
         governance = GovernanceInterface(_governance);
         stableToken = TokenInterface(token);
     }
+
+    receive() external payable {}
 }
