@@ -10,7 +10,6 @@ module.exports = async function(deployer, network, accounts) {
         String(10 ** 17),
         30,
         lendingContract.address,
-        lendingContract.address
     ]
     await deployer.deploy(governanceContract, ...args);
 };
