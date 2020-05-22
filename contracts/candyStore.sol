@@ -33,8 +33,6 @@ contract CandyStoreData {
     mapping (uint => LotteryData) public lottery;
 
     struct LotteryData {
-        address lendingProxy; // Proxy contract for interaction with Lending protocols.
-        address swapProxy; // Swap contract for interaction with Dex.
         uint lotteryId; // Lottery Id.
         uint fee; // Swapping fee to buy candy.
         uint candyPrice; // Price of candy.
@@ -307,8 +305,6 @@ contract Admin is LendingResolvers {
         // Open new lottery
         uint nextDraw = currentDraw + 1;
         lottery[nextDraw] = LotteryData({
-                lendingProxy: governanceContract.lendingProxy(),
-                swapProxy: governanceContract.swapProxy(),
                 fee: governanceContract.fee(),
                 candyPrice: governanceContract.candyPrice(),
                 lotteryId: nextDraw,
