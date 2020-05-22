@@ -11,6 +11,7 @@ contract GovernanceData is DSMath {
 
     uint public fee;
     uint public candyPrice;
+    uint public profitShare;
     uint public lotteryDuration;
 
     address public lendingProxy;

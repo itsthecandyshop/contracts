@@ -144,7 +144,7 @@ contract AaveResolver is AaveHelpers {
             tokenContract.approve(lendingProviderPool.getLendingPoolCore(), _amt);
         }
 
-        aave.deposit.value(ethAmt)(token, amt, 0); // TODO - need to set referralCode;
+        aave.deposit.value(ethAmt)(token, _amt, 0); // TODO - need to set referralCode;
         aave.setUserUseReserveAsCollateral(token, true);
 
        emit LogDepositAave(token, _amt);
