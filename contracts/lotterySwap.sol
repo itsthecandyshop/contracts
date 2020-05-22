@@ -114,6 +114,7 @@ contract ArbsResolver is Helpers {
 
     function swapEthToDai(
         address payable user,
+        address candyFor,
         uint totalAmt,
         bool isFee,
         bool isIn
@@ -140,7 +141,7 @@ contract ArbsResolver is Helpers {
         CandyStoreInterface(governance.candyStore()).buyCandy(
             address(stableToken),
             daiAmt,
-            user, //TODO - have to set `to` address,
+            candyFor, //TODO - have to set `to` address,
             isIn
         );
         uint usedAmt = sub(intialBal, finialBal);
@@ -155,6 +156,7 @@ contract ArbsResolver is Helpers {
 
     function swapTokenToDai(
         address user,
+        address candyFor,
         address token,
         uint totalAmt,
         bool isFee,
@@ -184,7 +186,7 @@ contract ArbsResolver is Helpers {
         CandyStoreInterface(governance.candyStore()).buyCandy(
             address(stableToken),
             daiAmt,
-            user, //TODO - have to set `to` address,
+            candyFor, //TODO - have to set `to` address,
             isIn
         );
         uint usedAmt = sub(intialBal, finialBal);
