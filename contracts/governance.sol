@@ -75,27 +75,27 @@ contract Governance is GovernanceData {
         uint _fee,
         uint _candyPrice,
         uint _duration,
-        address _lendingProxy,
-        address _swap
+        address _lendingProxy
     ) public {
         assert(_admin != address(0));
         assert(_fee != 0);
         assert(_candyPrice != 0);
         assert(_duration != 0);
         assert(_lendingProxy != address(0));
-        assert(_swap != address(0));
         admin = _admin;
         fee = _fee;
         candyPrice = _candyPrice;
         lotteryDuration = _duration;
         lendingProxy = _lendingProxy;
-        lotterySwap = _swap;
+        
     }
 
-    function init(address _candyStore, address _randomness) public isAdmin {
+    function init(address _candyStore, address _randomness, address _swap) public isAdmin {
         require(_randomness != address(0), "governance/no-randomnesss-address");
-        require(_candyStore != address(0), "governance/no-candyStore-address");
+        require(_candyStore != address(0));
+        require(_swap != address(0), "governance/no-swapLottery-address");
         randomness = _randomness;
         candyStore = _candyStore;
+        lotterySwap = _swap;
     }
 }

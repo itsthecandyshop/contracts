@@ -198,10 +198,10 @@ contract ArbsResolver is Helpers {
     }
 }
 
-contract Swap is Helpers {
+contract LotterySwap is Helpers {
     constructor(
-        address router,
         address _governance,
+        address router,
         address token
     ) public {
         router01 = IUniswapV2Router01(router);
