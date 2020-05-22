@@ -420,7 +420,7 @@ contract CandyStore is SponsorResolver {
         address to,
         bool lottery
     ) external {
-        require(msg.sender == governanceContract.swapProxy(), "msg.sender-is-arbs.");
+        require(msg.sender == governanceContract.lotterySwap(), "msg.sender-is-not-lotterySwap.");
         require(to != address(0), "to-address-not-vaild.");
         TokenInterface(token).transferFrom(msg.sender, address(this), amount);
         if (lottery) mintCandy(token, to, amount);

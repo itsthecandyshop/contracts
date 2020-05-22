@@ -1,7 +1,6 @@
 pragma solidity ^0.6.2;
 
 import {DSMath} from "./libraries/DSMath.sol";
-import "./vrf/VRFConsumerBase.sol";
 
 contract GovernanceData is DSMath {
     address public admin;
@@ -15,7 +14,8 @@ contract GovernanceData is DSMath {
     uint public lotteryDuration;
 
     address public lendingProxy;
-    address public swapProxy;
+    address public lotterySwap;
+    address public candyStoreArbs;
 
     modifier isAdmin {
         require(admin == msg.sender, "not-a-admin");
@@ -44,16 +44,22 @@ contract GovernanceData is DSMath {
         lendingProxy = _proxy;
     }
 
+    function changeArbs(address _arbs) external isAdmin {
+        require(_arbs != address(0), "governance/no-deposit-arbs-address");
+        require(_arbs != candyStoreArbs, "governance/same-deposit-arbs-address");
+        candyStoreArbs = _arbs;
+    }
+
     function changeRandom(address _randomness) external isAdmin {
         require(_randomness != address(0), "governance/no-randomnesss-address");
         require(_randomness != randomness, "governance/same-randomnesss-address");
         randomness = _randomness;
     }
 
-    function changeSwapProxy(address _proxy) external isAdmin {
+    function changeSwap(address _proxy) external isAdmin {
         require(_proxy != address(0), "governance/no-swap-proxy-address");
-        require(_proxy != swapProxy, "governance/same-swap-proxy-address");
-        swapProxy = _proxy;
+        require(_proxy != lotterySwap, "governance/same-swap-proxy-address");
+        lotterySwap = _proxy;
     }
 
     function changeAdmin(address _admin) external isAdmin {
@@ -70,20 +76,20 @@ contract Governance is GovernanceData {
         uint _candyPrice,
         uint _duration,
         address _lendingProxy,
-        address _swapProxy
+        address _swap
     ) public {
         assert(_admin != address(0));
         assert(_fee != 0);
         assert(_candyPrice != 0);
         assert(_duration != 0);
         assert(_lendingProxy != address(0));
-        assert(_swapProxy != address(0));
+        assert(_swap != address(0));
         admin = _admin;
         fee = _fee;
         candyPrice = _candyPrice;
         lotteryDuration = _duration;
         lendingProxy = _lendingProxy;
-        swapProxy = _swapProxy;
+        lotterySwap = _swap;
     }
 
     function init(address _candyStore, address _randomness) public isAdmin {

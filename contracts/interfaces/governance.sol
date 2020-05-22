@@ -2,7 +2,8 @@ pragma solidity ^0.6.2;
 
 interface GovernanceInterface {
     function lendingProxy() external view returns (address);
-    function swapProxy() external view returns (address);
+    function lotterySwap() external view returns (address);
+    function candyStoreArbs() external view returns (address);
 
     function candyStore() external view returns (address);
     function randomness() external view returns (address);
