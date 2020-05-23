@@ -48,6 +48,9 @@ interface IUniswapV2Router01 {
     function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
 }
 
+interface compoundTokenInterface {
+    function allocateTo(address _owner, uint256 value) external;
+}
 
 library SafeMath {
     uint constant WAD = 10 ** 18;
@@ -196,12 +199,16 @@ contract Demo {
     address public uniswapV2 = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
     address public router = 0xf164fC0Ec4E93095b804a4795bBe1e041497b92a;
     address public WETH = 0xc778417E063141139Fce010982780140Aa0cD5Ab;
+    address public compoundDai = 0xB5E5D0F8C0cbA267CD3D7035d6AdC8eBA7Df7Cdd;
+
     uint public baseAmt = 50*10**18;
-    uint public baseEthAmt = 0.5 ether;
+    uint public baseAmtDai = 10**30;
+    uint public baseEthAmt = 1 ether;
     struct TokenData {
         address token;
-        address v1;
-        address v2;
+        address exchangeV1;
+        address exchangeV2;
+        address exchangeV2Dai;
     }
 
     mapping (uint => TokenData) public exchangeAddress;
@@ -212,13 +219,16 @@ contract Demo {
         ERC20 tokenAddr = new ERC20(10**24);
         address exchangeV1 = IUniswapV1Factory(uniswapV1).createExchange(address(tokenAddr));
         address exchangeV2 = IUniswapV2Factory(uniswapV2).createPair(WETH, address(tokenAddr));
+        address exchangeV2Dai = IUniswapV2Factory(uniswapV2).createPair(compoundDai, address(tokenAddr));
         exchangeAddress[latestExchange] = TokenData(
             address(tokenAddr),
             exchangeV1,
-            exchangeV2
+            exchangeV2,
+            exchangeV2Dai
         );
         addLiqudityV1(address(tokenAddr), exchangeV1);
         addLiqudityV2(address(tokenAddr));
+        addLiqudityV2Dai(address(tokenAddr));
     }
 
     function addLiqudityV1(address token, address exchangeV1) internal {
@@ -239,6 +249,23 @@ contract Demo {
             baseAmt,
             baseAmt - 50*10**17,
             baseEthAmt - 1*10**17, // 0.99 eth
+            msg.sender,
+            uint(1899063809) // 6th March 2030 GMT // no logic
+        );
+    }
+
+    function addLiqudityV2Dai(address token) internal {
+        ERC20(token)._mint(address(this), baseAmtDai);
+        ERC20(token).approve(router, uint(-1));
+        compoundTokenInterface(compoundDai).allocateTo(address(this), baseAmtDai);
+        ERC20(compoundDai).approve(router, uint(-1));
+        IUniswapV2Router01(router).addLiquidity(
+            token,
+            compoundDai,
+            baseAmtDai,
+            baseAmtDai,
+            baseAmtDai - 50*10**19,
+            baseAmtDai - 50*10**19,
             msg.sender,
             uint(1899063809) // 6th March 2030 GMT // no logic
         );
