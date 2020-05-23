@@ -54,7 +54,12 @@ contract CandyStoreData {
     // Mapping of lottery id => user address => no of candies
     mapping (uint => mapping (address => uint)) public lotteryTickets;
     // Mapping of lottery id => user address of each candy in sequence.
-    mapping (uint => address[]) public lotteryUsers;
+    mapping (uint => TicketsData[]) public lotteryUsers;
+
+    struct TicketsData {
+        address user;
+        uint id;
+    }
 
     // Mapping of lottery id => sponsor address => Token details
     mapping (uint => mapping (address => SponsorData)) public sponsorBalance;
@@ -108,6 +113,38 @@ contract CandyStoreData {
         _sponsorAmt = _lottery.tokenBalances[token].sponsorAmount;
         _prizeAmt = _lottery.tokenBalances[token].totalPrizeAmount;
     }
+
+    function addCandy(address user, uint _candies) internal {
+        lottery[openDraw].totalCandy += _candies;
+        lotteryTickets[openDraw][user] += _candies;
+        lotteryUsers[openDraw].push(TicketsData(
+            user,
+            lottery[openDraw].totalCandy
+        ));
+    }
+
+
+   function getCandy(uint lotteryId, uint ticketNum) public view returns(address winner) {
+        uint _totalCandy = lottery[lotteryId].totalCandy;
+        TicketsData[] storage _users = lotteryUsers[lotteryId];
+        uint _ticketNum = ticketNum + 1;
+        uint _length = _users.length;
+        require(_ticketNum < _totalCandy, "num-more");
+        if (_ticketNum < _users[0].id || _length == 1 ) {
+            winner = _users[0].user;
+        } else {
+            for (uint i = 0; i < _length; i++) {
+                uint _num = _users[i].id;
+                if (_num == _ticketNum) {
+                    winner = _users[i].user;
+                    break;
+                } else if (_ticketNum > _num && _ticketNum < _users[i + 1].id) {
+                    winner = _users[i + 1].user;
+                    break;
+                }
+            }
+        }
+    }
 }
 
 
@@ -121,6 +158,7 @@ contract LendingResolvers is CandyStoreData {
     // TODO - change9898
     function _deposit(uint lendingId, address token, uint amt) public returns (uint _depositedAmt) {
         address _target = governanceContract.lendingProxy();
+        // solium-disable-next-line security/no-low-level-calls
         (bool status, bytes memory returnedData) = _target
             .delegatecall(
             abi.encodeWithSelector(
@@ -147,6 +185,7 @@ contract LendingResolvers is CandyStoreData {
     // TODO - change9898
     function _withdraw(uint lendingId, address token, uint amt) public returns (uint withdrawnAmt) {
         address _target = governanceContract.lendingProxy();
+        // solium-disable-next-line security/no-low-level-calls
         (bool status, bytes memory returnedData) = _target
             .delegatecall(
             abi.encodeWithSelector(
@@ -180,6 +219,7 @@ contract Admin is LendingResolvers {
         require(parts > 0 && totalUsers > 0, "parts/totalUsers-is-0");
         uint[] memory randamArr = new uint[](parts);
         for(uint i = 0; i < parts; i++) {
+            // solium-disable-next-line security/no-block-members
             uint randomPart = uint(keccak256(abi.encodePacked(i, randomNum, block.difficulty*now, now)));
             randamArr[i] = randomPart % totalUsers;
         }
@@ -198,7 +238,7 @@ contract Admin is LendingResolvers {
                 uint lendingId = stableCoins[token].lendingId;
                 uint SponsorPrizeAmt = rewardLottery.tokenBalances[token].sponsorAmount;
                 uint userPrizeAmt = rewardLottery.tokenBalances[token].userAmount;
-                
+
                 if ( userPrizeAmt > 0 || SponsorPrizeAmt > 0) {
                     uint totalPrizeAmt = _withdraw(lendingId, token, uint(-1));
                     totalPrizeAmt -= SponsorPrizeAmt;
@@ -208,7 +248,7 @@ contract Admin is LendingResolvers {
                     for (uint j = 0; j < randoms.length; j++) {
                         uint winnerAmt = totalPrizeAmt >= prizeAmt ? prizeAmt : totalPrizeAmt;
                         uint _random = randoms[j];
-                        address lotteryWinner = lotteryUsers[rewardDrawId][_random]; // Lottery Winner.
+                        address lotteryWinner = getCandy(rewardDrawId, _random); // Lottery Winner.
                         TokenInterface(token).transfer(lotteryWinner, winnerAmt);
                         totalPrizeAmt -= winnerAmt;
                     }
@@ -231,10 +271,10 @@ contract Admin is LendingResolvers {
 
     function getRandom() external {
         RandomnessInterface randomnessContract = RandomnessInterface(governanceContract.randomness());
-        
+
         uint rewardDrawId = openDraw - 1;
         LotteryData storage rewardLottery = lottery[rewardDrawId];
-        
+
         uint randomNum = randomnessContract.randomNumber(rewardDrawId);
         require(rewardLottery.state == LotteryState.committed, "lottery-not-committed");
         require(randomNum == 0, "random-number-not-found");
@@ -371,17 +411,13 @@ contract CandyResolver is Admin, DSMath {
         uint tokenDec = TokenInterface(token).decimals();
         uint _amt18 = mul(amt, 10 ** (18 - tokenDec));
 
-        uint candyPrice = lotteryDraw.candyPrice;
+        uint candyPrice = governanceContract.candyPrice();
         uint candyAmt = mod(_amt18, candyPrice);
         require(candyAmt == 0 && amt != 0, "amt-is-not-vaild");
 
         lotteryDraw.tokenBalances[token].userAmount += amt;
         candies = amt / candyPrice;
-        for (uint i = 0; i < candies; i++) {
-            lotteryUsers[openDraw].push(user);
-        }
-        lotteryTickets[openDraw][user] += candies;
-        lotteryDraw.totalCandy += candies;
+        addCandy(user, candies);
     }
 }
 
@@ -420,7 +456,8 @@ contract CandyStore is SponsorResolver {
         address to,
         bool lottery
     ) external returns(uint candies) {
-        require(msg.sender == governanceContract.lotterySwap(), "msg.sender-is-not-lotterySwap.");
+        // TODO - change
+        // require(msg.sender == governanceContract.lotterySwap(), "msg.sender-is-not-lotterySwap.");
         require(to != address(0), "to-address-not-vaild.");
         TokenInterface(token).transferFrom(msg.sender, address(this), amount);
         if (lottery) candies = mintCandy(token, to, amount);
