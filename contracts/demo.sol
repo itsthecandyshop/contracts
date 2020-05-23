@@ -10,6 +10,45 @@ interface IUniswapV2Factory {
   function createPair(address tokenA, address tokenB) external returns (address pair);
 }
 
+interface IUniswapV1Exchange {
+    function addLiquidity(uint256 minLiquidity, uint256 maxTokens, uint256 deadline) external payable returns (uint256);
+    function removeLiquidity(
+        uint256 amount,
+        uint256 minEth,
+        uint256 minTokens,
+        uint256 deadline
+        ) external returns (uint256, uint256);
+
+    function totalSupply() external view returns (uint);
+}
+
+interface IUniswapV2Router01 {
+    function factory() external pure returns (address);
+    function WETH() external pure returns (address);
+
+    function addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint amountADesired,
+        uint amountBDesired,
+        uint amountAMin,
+        uint amountBMin,
+        address to,
+        uint deadline
+    ) external returns (uint amountA, uint amountB, uint liquidity);
+    function addLiquidityETH(
+        address token,
+        uint amountTokenDesired,
+        uint amountTokenMin,
+        uint amountETHMin,
+        address to,
+        uint deadline
+    ) external payable returns (uint amountToken, uint amountETH, uint liquidity);
+    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
+    function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
+}
+
+
 library SafeMath {
     uint constant WAD = 10 ** 18;
 
@@ -76,13 +115,13 @@ contract ERC20 {
         _mint(msg.sender, _totalSupply);
     }
 
-    function _mint(address to, uint256 value) internal {
+    function _mint(address to, uint256 value) public {
         totalSupply = totalSupply.add(value);
         balanceOf[to] = balanceOf[to].add(value);
         emit Transfer(address(0), to, value);
     }
 
-    function _burn(address from, uint256 value) internal {
+    function _burn(address from, uint256 value) public {
         balanceOf[from] = balanceOf[from].sub(value);
         totalSupply = totalSupply.sub(value);
         emit Transfer(from, address(0), value);
@@ -157,6 +196,8 @@ contract Demo {
     address public uniswapV2 = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
     address public router = 0xf164fC0Ec4E93095b804a4795bBe1e041497b92a;
     address public WETH = 0xc778417E063141139Fce010982780140Aa0cD5Ab;
+    uint public baseAmt = 50*10**18;
+    uint public baseEthAmt = 0.5 ether;
     struct TokenData {
         address token;
         address v1;
@@ -166,7 +207,7 @@ contract Demo {
     mapping (uint => TokenData) public exchangeAddress;
     uint public latestExchange;
 
-    function newToken() external {
+    function initDemo() external payable {
         latestExchange++;
         ERC20 tokenAddr = new ERC20(10**24);
         address exchangeV1 = IUniswapV1Factory(uniswapV1).createExchange(address(tokenAddr));
@@ -176,10 +217,36 @@ contract Demo {
             exchangeV1,
             exchangeV2
         );
+        addLiqudityV1(address(tokenAddr), exchangeV1);
+        addLiqudityV2(address(tokenAddr));
+    }
+
+    function addLiqudityV1(address token, address exchangeV1) internal {
+         ERC20(token)._mint(address(this), baseAmt);
+        ERC20(token).approve(exchangeV1, uint(-1));
+        IUniswapV1Exchange(exchangeV1).addLiquidity.value(baseEthAmt)(
+            baseEthAmt - 1*10**17, // 0.99 eth
+            baseAmt,
+            uint(1899063809) // 6th March 2030 GMT // no logic
+        );
+    }
+
+    function addLiqudityV2(address token) internal {
+        ERC20(token)._mint(address(this), baseAmt);
+        ERC20(token).approve(router, uint(-1));
+        IUniswapV2Router01(router).addLiquidityETH.value(baseEthAmt)(
+            token,
+            baseAmt,
+            baseAmt - 50*10**17,
+            baseEthAmt - 1*10**17, // 0.99 eth
+            msg.sender,
+            uint(1899063809) // 6th March 2030 GMT // no logic
+        );
     }
 
     function getLatest() external view returns (TokenData memory){
        return exchangeAddress[latestExchange];
     }
 
+    receive() external payable {}
 }
