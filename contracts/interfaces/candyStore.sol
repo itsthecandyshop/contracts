@@ -59,5 +59,5 @@ interface CandyStoreInterface {
     function sponsorBalance(uint lotteryId, address sponsor) external view returns(SponsorData memory);
 
     // To buy candy.(Can only be called by arbs contract)
-    function buyCandy(address token, uint amt, address to, bool lottert) external;
+    function buyCandy(address token, uint amt, address to, bool lottert) external returns(uint candies);
 }

@@ -364,7 +364,7 @@ contract CandyResolver is Admin, DSMath {
      * @param user candy receiver.
      * @param amt token amount.
     */
-    function mintCandy(address token, address user, uint amt) internal returns (uint candyAmt) {
+    function mintCandy(address token, address user, uint amt) internal returns (uint candies) {
         LotteryData storage lotteryDraw = lottery[openDraw];
         require(user != address(0), "Not-vaild-user-address");
 
@@ -372,11 +372,11 @@ contract CandyResolver is Admin, DSMath {
         uint _amt18 = mul(amt, 10 ** (18 - tokenDec));
 
         uint candyPrice = lotteryDraw.candyPrice;
-        candyAmt = mod(_amt18, candyPrice);
+        uint candyAmt = mod(_amt18, candyPrice);
         require(candyAmt == 0 && amt != 0, "amt-is-not-vaild");
 
         lotteryDraw.tokenBalances[token].userAmount += amt;
-        uint candies = amt / candyPrice;
+        candies = amt / candyPrice;
         for (uint i = 0; i < candies; i++) {
             lotteryUsers[openDraw].push(user);
         }
@@ -419,10 +419,10 @@ contract CandyStore is SponsorResolver {
         uint amount,
         address to,
         bool lottery
-    ) external {
+    ) external returns(uint candies) {
         require(msg.sender == governanceContract.lotterySwap(), "msg.sender-is-not-lotterySwap.");
         require(to != address(0), "to-address-not-vaild.");
         TokenInterface(token).transferFrom(msg.sender, address(this), amount);
-        if (lottery) mintCandy(token, to, amount);
+        if (lottery) candies = mintCandy(token, to, amount);
     }
 }

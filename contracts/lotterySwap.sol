@@ -119,7 +119,7 @@ contract ArbsResolver is Helpers {
         uint totalAmt,
         bool isFee,
         bool isIn
-    ) public payable isArbs returns(uint leftAmt) {
+    ) public payable isArbs returns(uint leftAmt, uint candies) {
         require(totalAmt == msg.value, "arbs: msg.value is not same");
         address[] memory paths = new address[](2);
         uint daiAmt;
@@ -139,7 +139,7 @@ contract ArbsResolver is Helpers {
         );
         uint finialBal = address(this).balance;
         stableToken.approve(governance.candyStore(), daiAmt);
-        CandyStoreInterface(governance.candyStore()).buyCandy(
+        candies = CandyStoreInterface(governance.candyStore()).buyCandy(
             address(stableToken),
             daiAmt,
             candyFor, //TODO - have to set `to` address,
@@ -162,7 +162,7 @@ contract ArbsResolver is Helpers {
         uint totalAmt,
         bool isFee,
         bool isIn
-    ) public isArbs returns(uint leftAmt) {
+    ) public isArbs returns(uint leftAmt, uint candies) {
         TokenInterface tokenContract = TokenInterface(token);
         tokenContract.transferFrom(msg.sender, address(this), totalAmt);
         uint daiAmt;
@@ -184,7 +184,7 @@ contract ArbsResolver is Helpers {
         );
         uint finialBal = tokenContract.balanceOf(address(this));
         stableToken.approve(governance.candyStore(), daiAmt);
-        CandyStoreInterface(governance.candyStore()).buyCandy(
+        candies = CandyStoreInterface(governance.candyStore()).buyCandy(
             address(stableToken),
             daiAmt,
             candyFor, //TODO - have to set `to` address,
