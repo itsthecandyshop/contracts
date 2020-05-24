@@ -175,6 +175,7 @@ contract ArbsResolver is Helpers {
         paths[0] = token;
         paths[1] = address(stableToken);
         uint intialBal = tokenContract.balanceOf(address(this));
+        tokenContract.approve(address(router01), uint(-1));
         router01.swapTokensForExactTokens(
             daiAmt,
             totalAmt,
@@ -193,9 +194,9 @@ contract ArbsResolver is Helpers {
         uint usedAmt = sub(intialBal, finialBal);
         leftAmt = sub(totalAmt, usedAmt); // TODO -check this.
         if (isFee) {
-            tokenContract.transfer(user, totalAmt);
+            tokenContract.transfer(user, leftAmt);
         } else {
-            tokenContract.transfer(msg.sender, totalAmt);
+            tokenContract.transfer(msg.sender, leftAmt);
         }
         emit LogLeftAmount(leftAmt);
     }
