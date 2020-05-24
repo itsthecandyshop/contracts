@@ -10,12 +10,12 @@ async function calculateArbNum(token, tokenSold, isEthToToken) {
     let _y2 = isEthToToken ? tokenBalaceV2 : ethBalanceV2;
 
     let _sqrt = Math.sqrt(_x1 * _y1 * _x2 * _y2);
-    let a = _y1 * _x2
-    let b = _y1 + _y2
+    let a = _x1 * _y2
+    let b = _x1 + _x2
 
-    let y = _sqrt - a;
+    let y = a - _sqrt;
     y = y / b;
 
-    arbNum = _y2 - ((_x2*_y2) / (_x2 + y))
+    arbNum = y;
     return arbNum
 }
