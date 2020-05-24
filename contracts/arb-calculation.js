@@ -13,7 +13,9 @@ async function calculateArbNum(token, tokenSold, isEthToToken) {
     let a = _y1 * _x2
     let b = _y1 + _y2
 
-    arbNum = _sqrt - a;
-    arbNum = arbNum / b;
+    let y = _sqrt - a;
+    y = y / b;
+
+    arbNum = _y2 - ((_x2*_y2) / (_x2 + y))
     return arbNum
 }
