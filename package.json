@@ -12,7 +12,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@openzeppelin/contracts": "^3.0.1",
+    "@openzeppelin/contracts": "^4.4.2",
     "@truffle/artifactor": "^4.0.45",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
