@@ -22,7 +22,7 @@
     "ethereumjs-util": "^6.2.0",
     "ethereumjs-wallet": "0.6.2",
     "ethers": "^4.0.46",
-    "minimist": "^1.2.5",
+    "minimist": "^1.2.6",
     "openzeppelin-test-helpers": "^0.5.1",
     "solc": "^0.6.0",
     "truffle-assertions": "^0.9.2",
